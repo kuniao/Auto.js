@@ -4,7 +4,9 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+
 import androidx.annotation.NonNull;
+
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import androidx.core.view.GravityCompat;
@@ -50,7 +52,7 @@ import org.autojs.autojs.ui.floating.FloatyWindowManger;
 import org.autojs.autojs.ui.log.LogActivity_;
 import org.autojs.autojs.ui.main.community.CommunityFragment;
 import org.autojs.autojs.ui.main.community.CommunityFragment_;
-import org.autojs.autojs.ui.main.sample.MarketFragment_;
+import org.autojs.autojs.ui.main.market.MarketFragment;
 import org.autojs.autojs.ui.main.scripts.MyScriptListFragment_;
 import org.autojs.autojs.ui.main.task.TaskManagerFragment_;
 import org.autojs.autojs.ui.settings.SettingsActivity_;
@@ -64,7 +66,6 @@ import java.util.Arrays;
 
 @EActivity(R.layout.activity_main)
 public class MainActivity extends BaseActivity implements OnActivityResultDelegate.DelegateHost, BackPressedHandler.HostActivity, PermissionRequestProxyActivity {
-
 
     public static class DrawerOpenEvent {
         static DrawerOpenEvent SINGLETON = new DrawerOpenEvent();
@@ -138,7 +139,7 @@ public class MainActivity extends BaseActivity implements OnActivityResultDelega
     }
 
     private void checkPermissions() {
-        checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE);
     }
 
     private void showAccessibilitySettingPromptIfDisabled() {
@@ -171,7 +172,7 @@ public class MainActivity extends BaseActivity implements OnActivityResultDelega
                 .add(new MyScriptListFragment_(), R.string.text_file)
                 .add(new DocsFragment_(), R.string.text_tutorial)
                 .add(new CommunityFragment_(), R.string.text_community)
-                .add(new MarketFragment_(), R.string.text_market)
+                .add(new MarketFragment(), R.string.text_market)
                 .add(new TaskManagerFragment_(), R.string.text_manage)
                 .build();
         mViewPager.setAdapter(mPagerAdapter);
@@ -180,8 +181,6 @@ public class MainActivity extends BaseActivity implements OnActivityResultDelega
     }
 
     private void setUpViewPagerFragmentBehaviors() {
-
-
         mPagerAdapter.setOnFragmentInstantiateListener((pos, fragment) -> {
             ((ViewPagerFragment) fragment).setFab(mFab);
             if (pos == mViewPager.getCurrentItem()) {

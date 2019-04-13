@@ -34,7 +34,7 @@ public class TimedTaskDatabase extends Database<TimedTask> {
     @Override
     protected TimedTask createModelFromCursor(Cursor cursor) {
         TimedTask task = new TimedTask();
-        task.setId(cursor.getInt(0));
+        task.setId(cursor.getLong(0));
         task.setTimeFlag(cursor.getLong(1));
         task.setScheduled(cursor.getInt(2) != 0);
         task.setDelay(cursor.getLong(3));

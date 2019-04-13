@@ -34,6 +34,7 @@ import com.stardust.util.ScreenMetrics;
 
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
+import org.opencv.imgproc.Imgproc;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
@@ -43,6 +44,9 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * Created by Stardust on 2017/5/20.
@@ -142,7 +146,7 @@ public class Images {
         return image.pixel(x, y);
     }
 
-    public static ImageWrapper concat(ImageWrapper img1, Rect rect1, ImageWrapper img2, Rect rect2, int direction) {
+    public static ImageWrapper concat(ImageWrapper img1, ImageWrapper img2, int direction) {
         if (!Arrays.asList(Gravity.LEFT, Gravity.RIGHT, Gravity.TOP, Gravity.BOTTOM).contains(direction)) {
             throw new IllegalArgumentException("unknown direction " + direction);
         }
@@ -154,21 +158,21 @@ public class Images {
             img2 = tmp;
         }
         if (direction == Gravity.LEFT || direction == Gravity.RIGHT) {
-            width = rect1.width + rect2.width;
-            height = Math.max(rect1.height, rect2.height);
+            width = img1.getWidth() + img2.getWidth();
+            height = Math.max(img1.getHeight(), img2.getHeight());
         } else {
-            width = Math.max(rect1.width, rect2.height);
-            height = rect1.height + rect2.height;
+            width = Math.max(img1.getWidth(), img2.getHeight());
+            height = img1.getHeight() + img2.getHeight();
         }
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         Paint paint = new Paint();
         if (direction == Gravity.LEFT || direction == Gravity.RIGHT) {
-            canvas.drawBitmap(img1.getBitmap(), 0, (height - rect1.height) / 2, paint);
-            canvas.drawBitmap(img2.getBitmap(), rect1.width, (height - rect2.height) / 2, paint);
+            canvas.drawBitmap(img1.getBitmap(), 0, (height - img1.getHeight()) / 2, paint);
+            canvas.drawBitmap(img2.getBitmap(), img1.getWidth(), (height - img2.getHeight()) / 2, paint);
         } else {
-            canvas.drawBitmap(img1.getBitmap(), (width - rect1.width) / 2, 0, paint);
-            canvas.drawBitmap(img2.getBitmap(), (width - rect2.width) / 2, rect1.height, paint);
+            canvas.drawBitmap(img1.getBitmap(), (width - img1.getWidth()) / 2, 0, paint);
+            canvas.drawBitmap(img2.getBitmap(), (width - img2.getWidth()) / 2, img1.getHeight(), paint);
         }
         return ImageWrapper.ofBitmap(bitmap);
     }
@@ -301,6 +305,33 @@ public class Images {
             OpenCVHelper.release(src);
         }
         return point;
+    }
+
+    public List<TemplateMatching.Match> matchTemplate(ImageWrapper image, ImageWrapper template, float weakThreshold, float threshold, Rect rect, int maxLevel, int limit) {
+        initOpenCvIfNeeded();
+        if (image == null)
+            throw new NullPointerException("image = null");
+        if (template == null)
+            throw new NullPointerException("template = null");
+        Mat src = image.getMat();
+        if (rect != null) {
+            src = new Mat(src, rect);
+        }
+        List<TemplateMatching.Match> result = TemplateMatching.fastTemplateMatching(src, template.getMat(), Imgproc.TM_CCOEFF_NORMED,
+                weakThreshold, threshold, maxLevel, limit);
+        for (TemplateMatching.Match match : result) {
+            Point point = match.point;
+            if (rect != null) {
+                point.x += rect.x;
+                point.y += rect.y;
+            }
+            point.x = mScreenMetrics.scaleX((int) point.x);
+            point.y = mScreenMetrics.scaleX((int) point.y);
+        }
+        if (src != image.getMat()) {
+            OpenCVHelper.release(src);
+        }
+        return result;
     }
 
     public Mat newMat() {

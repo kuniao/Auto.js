@@ -41,14 +41,6 @@ public class TimedTaskManager {
         mContext = context;
         mTimedTaskDatabase = new TimedTaskDatabase(context);
         mIntentTaskDatabase = new IntentTaskDatabase(context);
-        mTimedTaskDatabase.getModelChange().subscribe(change -> {
-            int action = change.getAction();
-            if (action == ModelChange.DELETE && countTasks() == 0) {
-                TimedTaskScheduler.stopRtcRepeating(mContext);
-            } else if (action == ModelChange.INSERT) {
-                TimedTaskScheduler.checkTasksRepeatedlyIfNeeded(mContext);
-            }
-        });
     }
 
     @SuppressLint("CheckResult")
@@ -68,7 +60,7 @@ public class TimedTaskManager {
 
     @SuppressLint("CheckResult")
     public void removeTask(TimedTask timedTask) {
-        TimedTaskScheduler.cancel(mContext, timedTask);
+        TimedTaskScheduler.cancel(timedTask);
         mTimedTaskDatabase.delete(timedTask)
                 .subscribe(Observers.emptyConsumer(), Throwable::printStackTrace);
     }
@@ -76,15 +68,17 @@ public class TimedTaskManager {
     @SuppressLint("CheckResult")
     public void addTask(TimedTask timedTask) {
         mTimedTaskDatabase.insert(timedTask)
-                .subscribe(Observers.emptyConsumer(), Throwable::printStackTrace);;
-        TimedTaskScheduler.scheduleTaskIfNeeded(mContext, timedTask);
+                .subscribe(id -> {
+                    timedTask.setId(id);
+                    TimedTaskScheduler.scheduleTaskIfNeeded(mContext, timedTask, false);
+                }, Throwable::printStackTrace);
     }
 
     @SuppressLint("CheckResult")
     public void addTask(IntentTask intentTask) {
         mIntentTaskDatabase.insert(intentTask)
                 .subscribe(i -> {
-                    if(!TextUtils.isEmpty(intentTask.getAction())){
+                    if (!TextUtils.isEmpty(intentTask.getAction())) {
                         App.Companion.getApp().getDynamicBroadcastReceivers()
                                 .register(intentTask);
                     }
@@ -95,7 +89,7 @@ public class TimedTaskManager {
     public void removeTask(IntentTask intentTask) {
         mIntentTaskDatabase.delete(intentTask)
                 .subscribe(i -> {
-                    if(!TextUtils.isEmpty(intentTask.getAction())){
+                    if (!TextUtils.isEmpty(intentTask.getAction())) {
                         App.Companion.getApp().getDynamicBroadcastReceivers()
                                 .unregister(intentTask.getAction());
                     }
@@ -135,15 +129,21 @@ public class TimedTaskManager {
     public void updateTask(TimedTask task) {
         mTimedTaskDatabase.update(task)
                 .subscribe(Observers.emptyConsumer(), Throwable::printStackTrace);
-        TimedTaskScheduler.cancel(mContext, task);
-        TimedTaskScheduler.scheduleTaskIfNeeded(mContext, task);
+        TimedTaskScheduler.cancel(task);
+        TimedTaskScheduler.scheduleTaskIfNeeded(mContext, task, false);
+    }
+
+    @SuppressLint("CheckResult")
+    public void updateTaskWithoutReScheduling(TimedTask task) {
+        mTimedTaskDatabase.update(task)
+                .subscribe(Observers.emptyConsumer(), Throwable::printStackTrace);
     }
 
     @SuppressLint("CheckResult")
     public void updateTask(IntentTask task) {
         mIntentTaskDatabase.update(task)
                 .subscribe(i -> {
-                    if(i > 0 && !TextUtils.isEmpty(task.getAction())){
+                    if (i > 0 && !TextUtils.isEmpty(task.getAction())) {
                         App.Companion.getApp().getDynamicBroadcastReceivers()
                                 .register(task);
                     }
